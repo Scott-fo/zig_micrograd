@@ -7,8 +7,10 @@ pub fn Value(comptime T: type) type {
         data: T,
         gpa: std.mem.Allocator,
         prev: std.ArrayList(*Self),
+        op: ?[]const u8,
+        label: ?[]const u8,
 
-        pub fn init(gpa: std.mem.Allocator, data: T, prev: ?[]const *Self) !Self {
+        pub fn init(gpa: std.mem.Allocator, data: T, prev: ?[]const *Self, op: ?[]const u8, label: ?[]const u8) !Self {
             var list = std.ArrayList(*Self).init(gpa);
             if (prev) |p| {
                 try list.appendSlice(p);
@@ -18,6 +20,8 @@ pub fn Value(comptime T: type) type {
                 .data = data,
                 .gpa = gpa,
                 .prev = list,
+                .op = op,
+                .label = label,
             };
         }
 
@@ -50,6 +54,33 @@ pub fn Value(comptime T: type) type {
             try list.appendSlice("]");
 
             return list.toOwnedSlice();
+        }
+
+        pub fn toAscii(self: Self) ![]u8 {
+            var list = std.ArrayList(u8).init(self.gpa);
+            errdefer list.deinit();
+
+            try self.buildAscii(&list, "", true);
+            return list.toOwnedSlice();
+        }
+
+        fn buildAscii(self: Self, list: *std.ArrayList(u8), prefix: []const u8, is_last: bool) !void {
+            try std.fmt.format(list.writer(), "{s}({s}) {} {s}\n", .{
+                prefix,
+                self.label orelse "",
+                self.data,
+                self.op orelse "",
+            });
+
+            for (self.prev.items, 0..) |p, i| {
+                const is_last_child = i == self.prev.items.len - 1;
+                const new_prefix = try std.fmt.allocPrint(self.gpa, "{s}{s}", .{
+                    prefix,
+                    if (is_last) "       " else "│      ",
+                });
+                defer self.gpa.free(new_prefix);
+                try p.buildAscii(list, new_prefix, is_last_child);
+            }
         }
     };
 }

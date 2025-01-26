@@ -8,28 +8,32 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var a = try Value(i64).init(allocator, 2, null);
+    var a = try Value(i64).init(allocator, 2, null, null, "a");
     defer a.deinit();
 
-    var b = try Value(i64).init(allocator, -3, null);
+    var b = try Value(i64).init(allocator, -3, null, null, "b");
     defer b.deinit();
 
-    var c = try Value(i64).init(allocator, 10, null);
+    var c = try Value(i64).init(allocator, 10, null, null, "c");
     defer c.deinit();
 
-    var d_temp = try ops.mul(i64, a, b, allocator);
-    defer d_temp.deinit();
+    var e = try ops.mul(i64, a, b, allocator);
+    e.label = "e";
+    defer e.deinit();
 
-    var d = try ops.add(i64, d_temp, c, allocator);
+    var d = try ops.add(i64, e, c, allocator);
+    d.label = "d";
     defer d.deinit();
 
-    const d_string = try d.string();
-    defer allocator.free(d_string);
+    var f = try Value(i64).init(allocator, -2, null, null, "f");
+    defer f.deinit();
 
-    std.debug.print("{s}\n", .{d_string});
+    var L = try ops.mul(i64, d, f, allocator);
+    L.label = "L";
+    defer L.deinit();
 
-    const d_prev_string = try d.prevString();
-    defer allocator.free(d_prev_string);
+    const asci = try L.toAscii();
+    defer allocator.free(asci);
 
-    std.debug.print("{s}\n", .{d_prev_string});
+    std.debug.print("{s}\n", .{asci});
 }

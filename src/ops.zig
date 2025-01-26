@@ -18,6 +18,8 @@ pub fn add(
         allocator,
         l.data + r.data,
         &[2]*Value(T){ l, r },
+        "+",
+        null,
     );
 }
 
@@ -37,5 +39,7 @@ pub fn mul(
         allocator,
         lhs.data * rhs.data,
         &[2]*Value(T){ l, r },
+        "*",
+        null,
     );
 }
