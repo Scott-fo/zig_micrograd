@@ -7,8 +7,8 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const a = Value(i64).init(2);
-    const b = Value(i64).init(-3);
+    const a = try Value(i64).init(allocator, 2, null);
+    const b = try Value(i64).init(allocator, -3, null);
 
     const a_output = try a.display(allocator);
     defer allocator.free(a_output);
@@ -18,8 +18,8 @@ pub fn main() !void {
     defer allocator.free(b_output);
     std.debug.print("{s}\n", .{b_output});
 
-    const res = a.add(b);
-    const res2 = a.mul(b);
+    const res = try a.add(b, allocator);
+    const res2 = try a.mul(b, allocator);
 
     const out = try res.display(allocator);
     defer allocator.free(out);
