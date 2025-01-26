@@ -1,6 +1,11 @@
 const std = @import("std");
 
 pub fn Value(comptime T: type) type {
+    switch (@typeInfo(T)) {
+        .int, .float => {},
+        else => @compileError("Value type must be numeric"),
+    }
+
     return struct {
         const Self = @This();
 

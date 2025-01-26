@@ -42,8 +42,8 @@ pub fn mul(
 
     out.setBackwardFn(struct {
         fn backward(self: *Value(T)) void {
-            @constCast(self.prev.items[0]).grad += @constCast(self.prev.items[1]).data * self.grad;
-            @constCast(self.prev.items[1]).grad += @constCast(self.prev.items[0]).data * self.grad;
+            @constCast(self.prev.items[0]).grad += toF64(T, self.prev.items[1].data) * self.grad;
+            @constCast(self.prev.items[1]).grad += toF64(T, self.prev.items[0].data) * self.grad;
         }
     }.backward);
 
@@ -67,9 +67,17 @@ pub fn tanh(
 
     out.setBackwardFn(struct {
         fn backward(self: *Value(T)) void {
-            @constCast(self.prev.items[0]).grad += (1 - (self.data * self.data)) * self.grad;
+            @constCast(self.prev.items[0]).grad += (1 - toF64(T, (self.data * self.data))) * self.grad;
         }
     }.backward);
 
     return out;
+}
+
+fn toF64(comptime T: type, val: T) f64 {
+    return switch (@typeInfo(T)) {
+        .int => @as(f64, @floatFromInt(val)),
+        .float => val,
+        else => @compileError("Unsupported type"),
+    };
 }
