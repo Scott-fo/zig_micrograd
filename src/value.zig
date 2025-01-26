@@ -4,8 +4,9 @@ pub fn Value(comptime T: type) type {
     return struct {
         const Self = @This();
 
-        data: T,
         gpa: std.mem.Allocator,
+        data: T,
+        grad: f64,
         prev: std.ArrayList(*Self),
         op: ?[]const u8,
         label: ?[]const u8,
@@ -18,6 +19,7 @@ pub fn Value(comptime T: type) type {
 
             return .{
                 .data = data,
+                .grad = 0,
                 .gpa = gpa,
                 .prev = list,
                 .op = op,
@@ -65,11 +67,12 @@ pub fn Value(comptime T: type) type {
         }
 
         fn buildAscii(self: Self, list: *std.ArrayList(u8), prefix: []const u8, is_last: bool) !void {
-            try std.fmt.format(list.writer(), "{s}({s}) {} {s}\n", .{
+            try std.fmt.format(list.writer(), "{s}({s}) {} {s} grad={}\n", .{
                 prefix,
                 self.label orelse "",
                 self.data,
                 self.op orelse "",
+                self.grad,
             });
 
             for (self.prev.items, 0..) |p, i| {

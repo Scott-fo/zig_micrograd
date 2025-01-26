@@ -43,3 +43,22 @@ pub fn mul(
         null,
     );
 }
+
+pub fn tanh(
+    comptime T: type,
+    val: Value(T),
+    allocator: std.mem.Allocator,
+) !Value(T) {
+    const s = try allocator.create(Value(T));
+    s.* = val;
+
+    const res = (@exp(2 * val.data) - 1) / (@exp(2 * val.data) + 1);
+
+    return Value(T).init(
+        allocator,
+        res,
+        &[1]*Value(T){s},
+        "tanh",
+        null,
+    );
+}
