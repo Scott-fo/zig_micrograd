@@ -8,19 +8,19 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var x1 = try Value(f64).init(allocator, 2, null, null, "x1");
+    var x1 = try Value(f64).new(allocator, 2, "x1");
     defer x1.deinit();
 
-    var x2 = try Value(f64).init(allocator, 0, null, null, "x2");
+    var x2 = try Value(f64).new(allocator, 0, "x2");
     defer x2.deinit();
 
-    var w1 = try Value(f64).init(allocator, -3, null, null, "w1");
+    var w1 = try Value(f64).new(allocator, -3, "w1");
     defer w1.deinit();
 
-    var w2 = try Value(f64).init(allocator, 1, null, null, "w2");
+    var w2 = try Value(f64).new(allocator, 1, "w2");
     defer w2.deinit();
 
-    var b = try Value(f64).init(allocator, 6.8813735870195432, null, null, "b");
+    var b = try Value(f64).new(allocator, 6.8813735870195432, "b");
     defer b.deinit();
 
     var x1w1 = try ops.mul(f64, &x1, &w1, allocator);

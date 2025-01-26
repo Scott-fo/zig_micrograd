@@ -15,6 +15,19 @@ pub fn Value(comptime T: type) type {
         op: ?[]const u8,
         label: ?[]const u8,
 
+        pub fn new(gpa: std.mem.Allocator, data: T, label: ?[]const u8) !Self {
+            const list = std.ArrayList(*const Self).init(gpa);
+
+            return .{
+                .data = data,
+                .grad = 0,
+                .gpa = gpa,
+                .prev = list,
+                .op = null,
+                .label = label,
+            };
+        }
+
         pub fn init(gpa: std.mem.Allocator, data: T, prev: ?[]const *const Self, op: ?[]const u8, label: ?[]const u8) !Self {
             var list = std.ArrayList(*const Self).init(gpa);
             if (prev) |p| {
