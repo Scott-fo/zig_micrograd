@@ -23,14 +23,33 @@ pub fn Value(comptime T: type) type {
 
         pub fn deinit(self: *Self) void {
             for (self.prev.items) |p| {
-                p.deinit();
                 self.gpa.destroy(p);
             }
             self.prev.deinit();
         }
 
-        pub fn display(self: Self) ![]u8 {
+        pub fn string(self: Self) ![]u8 {
             return std.fmt.allocPrint(self.gpa, "Value(data={})", .{self.data});
+        }
+
+        pub fn prevString(self: Self) ![]u8 {
+            if (self.prev.items.len == 0) {
+                return &.{};
+            }
+
+            var list = std.ArrayList(u8).init(self.gpa);
+            errdefer list.deinit();
+
+            try list.appendSlice("Prev: [");
+            for (self.prev.items, 0..) |p, i| {
+                const p_str = try p.string();
+                defer self.gpa.free(p_str);
+                try list.appendSlice(p_str);
+                if (i < self.prev.items.len - 1) try list.appendSlice(", ");
+            }
+            try list.appendSlice("]");
+
+            return list.toOwnedSlice();
         }
     };
 }

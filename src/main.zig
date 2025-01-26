@@ -14,26 +14,22 @@ pub fn main() !void {
     var b = try Value(i64).init(allocator, -3, null);
     defer b.deinit();
 
-    const a_output = try a.display();
-    defer allocator.free(a_output);
-    std.debug.print("{s}\n", .{a_output});
+    var c = try Value(i64).init(allocator, 10, null);
+    defer c.deinit();
 
-    const b_output = try b.display();
-    defer allocator.free(b_output);
-    std.debug.print("{s}\n", .{b_output});
+    var d_temp = try ops.mul(i64, a, b, allocator);
+    defer d_temp.deinit();
 
-    var res = try ops.add(i64, a, b, allocator);
-    defer res.deinit();
+    var d = try ops.add(i64, d_temp, c, allocator);
+    defer d.deinit();
 
-    var res2 = try ops.mul(i64, a, b, allocator);
-    defer res2.deinit();
+    const d_string = try d.string();
+    defer allocator.free(d_string);
 
-    const out = try res.display();
-    defer allocator.free(out);
+    std.debug.print("{s}\n", .{d_string});
 
-    const out2 = try res2.display();
-    defer allocator.free(out2);
+    const d_prev_string = try d.prevString();
+    defer allocator.free(d_prev_string);
 
-    std.debug.print("{s}\n", .{out});
-    std.debug.print("{s}\n", .{out2});
+    std.debug.print("{s}\n", .{d_prev_string});
 }
