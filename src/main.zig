@@ -8,31 +8,45 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var a = try Value(i64).init(allocator, 2, null, null, "a");
-    defer a.deinit();
+    var x1 = try Value(f64).init(allocator, 2, null, null, "x1");
+    defer x1.deinit();
 
-    var b = try Value(i64).init(allocator, -3, null, null, "b");
+    var x2 = try Value(f64).init(allocator, 0, null, null, "x2");
+    defer x2.deinit();
+
+    var w1 = try Value(f64).init(allocator, -3, null, null, "w1");
+    defer w1.deinit();
+
+    var w2 = try Value(f64).init(allocator, 1, null, null, "w2");
+    defer w2.deinit();
+
+    var b = try Value(f64).init(allocator, 6.8813735870195432, null, null, "b");
     defer b.deinit();
 
-    var c = try Value(i64).init(allocator, 10, null, null, "c");
-    defer c.deinit();
+    var x1w1 = try ops.mul(f64, x1, w1, allocator);
+    x1w1.label = "x1*w1";
+    defer x1w1.deinit();
 
-    var e = try ops.mul(i64, a, b, allocator);
-    e.label = "e";
-    defer e.deinit();
+    var x2w2 = try ops.mul(f64, x2, w2, allocator);
+    x2w2.label = "x2*w2";
+    defer x2w2.deinit();
 
-    var d = try ops.add(i64, e, c, allocator);
-    d.label = "d";
-    defer d.deinit();
+    var x1w1x2w2 = try ops.add(f64, x1w1, x2w2, allocator);
+    x1w1x2w2.label = "x1w1 + x2w2";
+    defer x1w1x2w2.deinit();
 
-    var f = try Value(i64).init(allocator, -2, null, null, "f");
-    defer f.deinit();
+    var n = try ops.add(f64, x1w1x2w2, b, allocator);
+    n.label = "n";
+    defer n.deinit();
 
-    var L = try ops.mul(i64, d, f, allocator);
-    L.label = "L";
-    defer L.deinit();
+    var o = try ops.tanh(f64, n, allocator);
+    o.label = "o";
+    defer o.deinit();
 
-    const asci = try L.toAscii();
+    o.grad = 1.0;
+    o.backward();
+
+    const asci = try o.toAscii();
     defer allocator.free(asci);
 
     std.debug.print("{s}\n", .{asci});

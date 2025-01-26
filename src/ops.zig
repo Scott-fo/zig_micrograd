@@ -14,13 +14,22 @@ pub fn add(
     const r = try allocator.create(Value(T));
     r.* = rhs;
 
-    return Value(T).init(
+    var out = try Value(T).init(
         allocator,
         l.data + r.data,
         &[2]*Value(T){ l, r },
         "+",
         null,
     );
+
+    out.setBackwardFn(struct {
+        fn backward(self: *Value(T)) void {
+            self.prev.items[0].grad += 1.0 * self.grad;
+            self.prev.items[1].grad += 1.0 * self.grad;
+        }
+    }.backward);
+
+    return out;
 }
 
 pub fn mul(
@@ -35,13 +44,22 @@ pub fn mul(
     const r = try allocator.create(Value(T));
     r.* = rhs;
 
-    return Value(T).init(
+    var out = try Value(T).init(
         allocator,
         lhs.data * rhs.data,
         &[2]*Value(T){ l, r },
         "*",
         null,
     );
+
+    out.setBackwardFn(struct {
+        fn backward(self: *Value(T)) void {
+            self.prev.items[0].grad += self.prev.items[1].data * self.grad;
+            self.prev.items[1].grad += self.prev.items[0].data * self.grad;
+        }
+    }.backward);
+
+    return out;
 }
 
 pub fn tanh(
@@ -54,11 +72,19 @@ pub fn tanh(
 
     const res = (@exp(2 * val.data) - 1) / (@exp(2 * val.data) + 1);
 
-    return Value(T).init(
+    var out = try Value(T).init(
         allocator,
         res,
         &[1]*Value(T){s},
         "tanh",
         null,
     );
+
+    out.setBackwardFn(struct {
+        fn backward(self: *Value(T)) void {
+            self.prev.items[0].grad += (1 - (self.data * self.data)) * self.grad;
+        }
+    }.backward);
+
+    return out;
 }

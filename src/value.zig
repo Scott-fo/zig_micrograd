@@ -5,8 +5,12 @@ pub fn Value(comptime T: type) type {
         const Self = @This();
 
         gpa: std.mem.Allocator,
+
         data: T,
+
         grad: f64,
+        backward_fn: ?*const fn (*Self) void = null,
+
         prev: std.ArrayList(*Self),
         op: ?[]const u8,
         label: ?[]const u8,
@@ -83,6 +87,16 @@ pub fn Value(comptime T: type) type {
                 });
                 defer self.gpa.free(new_prefix);
                 try p.buildAscii(list, new_prefix, is_last_child);
+            }
+        }
+
+        pub fn setBackwardFn(self: *Self, func: *const fn (*Self) void) void {
+            self.backward_fn = func;
+        }
+
+        pub fn backward(self: *Self) void {
+            if (self.backward_fn) |f| {
+                f(self);
             }
         }
     };
