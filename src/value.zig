@@ -11,12 +11,12 @@ pub fn Value(comptime T: type) type {
         grad: f64,
         backward_fn: ?*const fn (*Self) void = null,
 
-        prev: std.ArrayList(*Self),
+        prev: std.ArrayList(*const Self),
         op: ?[]const u8,
         label: ?[]const u8,
 
-        pub fn init(gpa: std.mem.Allocator, data: T, prev: ?[]const *Self, op: ?[]const u8, label: ?[]const u8) !Self {
-            var list = std.ArrayList(*Self).init(gpa);
+        pub fn init(gpa: std.mem.Allocator, data: T, prev: ?[]const *const Self, op: ?[]const u8, label: ?[]const u8) !Self {
+            var list = std.ArrayList(*const Self).init(gpa);
             if (prev) |p| {
                 try list.appendSlice(p);
             }
@@ -32,9 +32,6 @@ pub fn Value(comptime T: type) type {
         }
 
         pub fn deinit(self: *Self) void {
-            for (self.prev.items) |p| {
-                self.gpa.destroy(p);
-            }
             self.prev.deinit();
         }
 
