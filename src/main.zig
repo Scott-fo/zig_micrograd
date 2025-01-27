@@ -1,7 +1,7 @@
 const std = @import("std");
 const ops = @import("ops.zig");
 const Value = @import("value.zig").Value;
-const Neuron = @import("neuron.zig");
+const Neuron = @import("Neuron.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
