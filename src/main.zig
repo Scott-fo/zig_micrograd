@@ -43,13 +43,7 @@ pub fn main() !void {
     defer o.deinit();
     o.label = "o";
 
-    o.grad = 1.0;
-    o.backward();
-    n.backward();
-    b.backward();
-    x1w1x2w2.backward();
-    x2w2.backward();
-    x1w1.backward();
+    try o.backward();
 
     const asci = try o.toAscii();
     defer allocator.free(asci);

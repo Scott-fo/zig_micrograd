@@ -109,10 +109,45 @@ pub fn Value(comptime T: type) type {
             self.backward_fn = func;
         }
 
-        pub fn backward(self: *Self) void {
-            if (self.backward_fn) |f| {
-                f(self);
+        pub fn backward(self: *Self) !void {
+            self.grad = 1.0;
+
+            var topo = std.ArrayList(*const Self).init(self.gpa);
+            defer topo.deinit();
+
+            try self.build_topo(&topo);
+
+            var i = topo.items.len;
+            while (i > 0) : (i -= 1) {
+                if (topo.items[i - 1].backward_fn) |f| {
+                    f(@constCast(topo.items[i - 1]));
+                }
             }
+        }
+
+        pub fn build_topo(
+            self: *const Self,
+            topo: *std.ArrayList(*const Self),
+        ) !void {
+            var visited = std.AutoHashMap(*const Self, void).init(self.gpa);
+            defer visited.deinit();
+
+            try build_topo_inner(self, topo, &visited);
+        }
+
+        fn build_topo_inner(
+            self: *const Self,
+            topo: *std.ArrayList(*const Self),
+            visited: *std.AutoHashMap(*const Self, void),
+        ) !void {
+            if (visited.contains(self)) return;
+            try visited.put(self, {});
+
+            for (self.prev.items) |child| {
+                try build_topo_inner(child, topo, visited);
+            }
+
+            try topo.append(self);
         }
     };
 }
