@@ -33,7 +33,13 @@ pub fn Value(comptime T: type) type {
             };
         }
 
-        pub fn init(gpa: std.mem.Allocator, data: T, prev: ?[]const *const Self, op: ?[]const u8, label: ?[]const u8) !Self {
+        pub fn init(
+            gpa: std.mem.Allocator,
+            data: T,
+            prev: ?[]const *const Self,
+            op: ?[]const u8,
+            label: ?[]const u8,
+        ) !Self {
             var list = std.ArrayList(*const Self).init(gpa);
             if (prev) |p| {
                 try list.appendSlice(p);
