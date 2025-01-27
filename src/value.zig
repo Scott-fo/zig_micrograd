@@ -9,58 +9,88 @@ pub fn Value(comptime T: type) type {
     return struct {
         const Self = @This();
 
-        gpa: std.mem.Allocator,
+        allocator: std.mem.Allocator,
+        refs: usize,
 
         data: T,
-
         grad: f64,
         backward_fn: ?*const fn (*Self) void = null,
-
-        prev: std.ArrayList(*const Self),
+        prev: std.ArrayList(*Self),
         op: ?[]const u8,
         label: ?[]const u8,
 
-        pub fn new(gpa: std.mem.Allocator, data: T, label: ?[]const u8) !Self {
-            const list = std.ArrayList(*const Self).init(gpa);
+        fn reference(self: *Self) void {
+            self.refs += 1;
+        }
 
-            return .{
+        pub fn release(self: *Self) void {
+            self.refs -= 1;
+
+            if (self.refs == 0) {
+                for (self.prev.items) |child| {
+                    child.release();
+                }
+
+                self.prev.deinit();
+                self.allocator.destroy(self);
+            }
+        }
+
+        pub fn new(
+            allocator: std.mem.Allocator,
+            data: T,
+            label: ?[]const u8,
+        ) !*Self {
+            const self = try allocator.create(Self);
+
+            self.* = .{
+                .allocator = allocator,
+                .refs = 1,
                 .data = data,
                 .grad = 0,
-                .gpa = gpa,
-                .prev = list,
+                .prev = std.ArrayList(*Self).init(allocator),
                 .op = null,
                 .label = label,
             };
+
+            return self;
         }
 
         pub fn init(
-            gpa: std.mem.Allocator,
+            allocator: std.mem.Allocator,
             data: T,
-            prev: ?[]const *const Self,
+            prev: ?[]*Self,
             op: ?[]const u8,
             label: ?[]const u8,
-        ) !Self {
-            var list = std.ArrayList(*const Self).init(gpa);
+        ) !*Self {
+            const self = try allocator.create(Self);
+            var list = std.ArrayList(*Self).init(allocator);
             if (prev) |p| {
                 try list.appendSlice(p);
+                for (p) |child| {
+                    child.reference();
+                }
             }
 
-            return .{
+            self.* = .{
+                .allocator = allocator,
+                .refs = 1,
                 .data = data,
                 .grad = 0,
-                .gpa = gpa,
                 .prev = list,
                 .op = op,
                 .label = label,
             };
+
+            return self;
         }
 
-        pub fn deinit(self: *Self) void {
+        fn deinit(self: *Self) void {
             self.prev.deinit();
         }
 
         pub fn string(self: Self) ![]u8 {
-            return std.fmt.allocPrint(self.gpa, "Value(data={})", .{self.data});
+            return std.fmt.allocPrint(self.allocator, "Value(data={})", .{self.data});
         }
 
         pub fn prevString(self: Self) ![]u8 {
@@ -68,13 +98,13 @@ pub fn Value(comptime T: type) type {
                 return &.{};
             }
 
-            var list = std.ArrayList(u8).init(self.gpa);
+            var list = std.ArrayList(u8).init(self.allocator);
             errdefer list.deinit();
 
             try list.appendSlice("Prev: [");
             for (self.prev.items, 0..) |p, i| {
                 const p_str = try p.string();
-                defer self.gpa.free(p_str);
+                defer self.allocator.free(p_str);
                 try list.appendSlice(p_str);
                 if (i < self.prev.items.len - 1) try list.appendSlice(", ");
             }
@@ -84,7 +114,7 @@ pub fn Value(comptime T: type) type {
         }
 
         pub fn toAscii(self: Self) ![]u8 {
-            var list = std.ArrayList(u8).init(self.gpa);
+            var list = std.ArrayList(u8).init(self.allocator);
             errdefer list.deinit();
 
             try self.buildAscii(&list, "", true);
@@ -102,11 +132,11 @@ pub fn Value(comptime T: type) type {
 
             for (self.prev.items, 0..) |p, i| {
                 const is_last_child = i == self.prev.items.len - 1;
-                const new_prefix = try std.fmt.allocPrint(self.gpa, "{s}{s}", .{
+                const new_prefix = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{
                     prefix,
                     if (is_last) "       " else "│      ",
                 });
-                defer self.gpa.free(new_prefix);
+                defer self.allocator.free(new_prefix);
                 try p.buildAscii(list, new_prefix, is_last_child);
             }
         }
@@ -118,7 +148,7 @@ pub fn Value(comptime T: type) type {
         pub fn backward(self: *Self) !void {
             self.grad = 1.0;
 
-            var topo = std.ArrayList(*const Self).init(self.gpa);
+            var topo = std.ArrayList(*const Self).init(self.allocator);
             defer topo.deinit();
 
             try self.build_topo(&topo);
@@ -135,7 +165,7 @@ pub fn Value(comptime T: type) type {
             self: *const Self,
             topo: *std.ArrayList(*const Self),
         ) !void {
-            var visited = std.AutoHashMap(*const Self, void).init(self.gpa);
+            var visited = std.AutoHashMap(*const Self, void).init(self.allocator);
             defer visited.deinit();
 
             try build_topo_inner(self, topo, &visited);
