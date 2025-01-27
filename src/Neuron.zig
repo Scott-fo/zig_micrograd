@@ -14,22 +14,19 @@ b: *Value(f64),
 pub fn init(
     allocator: std.mem.Allocator,
     nin: usize,
+    rand: std.Random,
 ) !Self {
     var w = std.ArrayList(*Value(f64)).init(allocator);
     try w.ensureTotalCapacity(nin);
 
-    var random = std.Random.DefaultPrng.init(@intCast(
-        std.time.milliTimestamp(),
-    ));
-
     var i: usize = 0;
     while (i < nin) : (i += 1) {
-        const rand_val = random.random().float(f64) * 2 - 1;
+        const rand_val = rand.float(f64) * 2 - 1;
         const weight = try Value(f64).new(allocator, rand_val, "w");
         try w.append(weight);
     }
 
-    const bias_val = random.random().float(f64) * 2 - 1;
+    const bias_val = rand.float(f64) * 2 - 1;
     const bias = try Value(f64).new(allocator, bias_val, "b");
 
     return .{

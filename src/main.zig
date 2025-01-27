@@ -2,6 +2,7 @@ const std = @import("std");
 const ops = @import("ops.zig");
 const Value = @import("value.zig").Value;
 const Neuron = @import("Neuron.zig");
+const Layer = @import("Layer.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -9,18 +10,55 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
+    var prng = std.Random.DefaultPrng.init(@intCast(
+        std.time.milliTimestamp(),
+    ));
+
+    const random = prng.random();
+
     try grad_example(allocator);
-    try neuron_example(allocator);
+    try neuron_example(allocator, random);
+    try layer_example(allocator, random);
 }
 
-fn neuron_example(allocator: std.mem.Allocator) !void {
+fn layer_example(allocator: std.mem.Allocator, random: std.Random) !void {
     var x1 = try Value(f64).new(allocator, 2, "x1");
     defer x1.release();
 
     var x2 = try Value(f64).new(allocator, 3, "x2");
     defer x2.release();
 
-    var n = try Neuron.init(allocator, 2);
+    var l = try Layer.init(allocator, 2, 3, random);
+    defer l.deinit();
+
+    var x = [2]*Value(f64){ x1, x2 };
+
+    const res = try l.call(&x);
+    defer {
+        for (res.items) |out| {
+            out.release();
+        }
+        res.deinit();
+    }
+
+    std.debug.print("Layer=[\n", .{});
+    for (res.items) |out| {
+        const res_string = try out.string();
+        defer allocator.free(res_string);
+
+        std.debug.print("  {s},\n", .{res_string});
+    }
+    std.debug.print("]\n", .{});
+}
+
+fn neuron_example(allocator: std.mem.Allocator, random: std.Random) !void {
+    var x1 = try Value(f64).new(allocator, 2, "x1");
+    defer x1.release();
+
+    var x2 = try Value(f64).new(allocator, 3, "x2");
+    defer x2.release();
+
+    var n = try Neuron.init(allocator, 2, random);
     defer n.deinit();
 
     var x = [2]*Value(f64){ x1, x2 };
@@ -31,7 +69,7 @@ fn neuron_example(allocator: std.mem.Allocator) !void {
     const res_string = try res.string();
     defer allocator.free(res_string);
 
-    std.debug.print("Value(data={s})\n", .{res_string});
+    std.debug.print("{s}\n", .{res_string});
 }
 
 fn grad_example(allocator: std.mem.Allocator) !void {
