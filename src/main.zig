@@ -1,7 +1,7 @@
 const std = @import("std");
-const value = @import("value.zig");
 const ops = @import("ops.zig");
-const Value = value.Value;
+const Value = @import("value.zig").Value;
+const Neuron = @import("neuron.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -9,6 +9,32 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
+    try grad_example(allocator);
+    try neuron_example(allocator);
+}
+
+fn neuron_example(allocator: std.mem.Allocator) !void {
+    var x1 = try Value(f64).new(allocator, 2, "x1");
+    defer x1.release();
+
+    var x2 = try Value(f64).new(allocator, 3, "x2");
+    defer x2.release();
+
+    var n = try Neuron.init(allocator, 2);
+    defer n.deinit();
+
+    var x = [2]*Value(f64){ x1, x2 };
+
+    const res = try n.call(&x);
+    defer res.release();
+
+    const res_string = try res.string();
+    defer allocator.free(res_string);
+
+    std.debug.print("Value(data={s})\n", .{res_string});
+}
+
+fn grad_example(allocator: std.mem.Allocator) !void {
     var x1 = try Value(f64).new(allocator, 2, "x1");
     defer x1.release();
 
