@@ -18,7 +18,8 @@ pub fn main() !void {
 }
 
 fn mlp_example(allocator: std.mem.Allocator) !void {
-    var nouts = [_]usize{ 4, 4, 1 };
+    const nouts = [_]usize{ 4, 4, 1 };
+
     var mlp = try MLP.init(allocator, 3, &nouts);
     defer mlp.deinit();
 

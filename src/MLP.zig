@@ -8,7 +8,11 @@ const Self = @This();
 allocator: std.mem.Allocator,
 layers: std.ArrayList(*Layer),
 
-pub fn init(allocator: std.mem.Allocator, nin: usize, nouts: []const usize) !Self {
+pub fn init(allocator: std.mem.Allocator, comptime nin: usize, comptime nouts: []const usize) !Self {
+    comptime {
+        if (nouts.len != nin) @compileError("nouts must have length nin");
+    }
+
     var layers = std.ArrayList(*Layer).init(allocator);
     errdefer {
         for (layers.items) |layer| {
