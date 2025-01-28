@@ -19,7 +19,7 @@ pub fn Value(comptime T: type) type {
         op: ?[]const u8,
         label: ?[]const u8,
 
-        fn retain(self: *Self) void {
+        pub fn retain(self: *Self) void {
             self.refs += 1;
         }
 
@@ -91,6 +91,13 @@ pub fn Value(comptime T: type) type {
 
         pub fn string(self: Self) ![]u8 {
             return std.fmt.allocPrint(self.allocator, "Value(data={})", .{self.data});
+        }
+
+        pub fn print(self: Self) !void {
+            const str = try self.string();
+            defer self.allocator.free(str);
+
+            std.debug.print("{s}\n", .{str});
         }
 
         pub fn prevString(self: Self) ![]u8 {

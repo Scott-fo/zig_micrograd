@@ -1,7 +1,7 @@
 const std = @import("std");
 const Layer = @import("Layer.zig");
 const Value = @import("value.zig").Value;
-const LayerOutput = @import("LayerOutput.zig");
+const LayerResult = @import("layer_result.zig").LayerResult;
 
 const Self = @This();
 
@@ -13,7 +13,7 @@ allocator: std.mem.Allocator,
 layers: std.ArrayList(*Layer),
 nin: usize,
 
-pub fn init(allocator: std.mem.Allocator, comptime nin: usize, comptime nouts: []const usize) !Self {
+pub fn init(allocator: std.mem.Allocator, nin: usize, comptime nouts: []const usize) !Self {
     comptime {
         if (nouts.len == 0) @compileError("Network must have at least one layer");
     }
@@ -54,7 +54,7 @@ pub fn deinit(self: *Self) void {
     self.layers.deinit();
 }
 
-pub fn call(self: *Self, comptime x: []const f64) !LayerOutput {
+pub fn call(self: *Self, x: []const f64) !LayerResult {
     if (x.len != self.nin) {
         std.debug.print("Input size mismatch: expected {}, got {}\n", .{ self.nin, x.len });
         return MLPError.InvalidInputSize;
@@ -69,20 +69,36 @@ pub fn call(self: *Self, comptime x: []const f64) !LayerOutput {
     try current.ensureTotalCapacity(x.len);
     for (x) |value| {
         const val = try Value(f64).new(self.allocator, value, null);
+        errdefer val.release();
+
         try current.append(val);
     }
 
     for (self.layers.items, 0..) |layer, i| {
         var layer_output = try layer.call(current.items);
+        defer {
+            if (i < self.layers.items.len - 1) {
+                layer_output.deinit();
+            }
+        }
 
         if (i < self.layers.items.len - 1) {
-            try next.appendSlice(layer_output.values.items);
+            switch (layer_output) {
+                .single => |value| {
+                    value.retain();
+                    try next.append(value);
+                },
+                .multiple => |values| {
+                    for (values.items) |value| {
+                        value.retain();
+                    }
+
+                    try next.appendSlice(values.items);
+                },
+            }
 
             for (current.items) |value| value.release();
             current.clearRetainingCapacity();
-
-            layer_output.values.clearRetainingCapacity();
-            layer_output.values.deinit();
 
             std.mem.swap(std.ArrayList(*Value(f64)), &current, &next);
             next.clearRetainingCapacity();

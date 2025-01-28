@@ -14,7 +14,31 @@ pub fn main() !void {
     // try grad_example(allocator);
     // try neuron_example(allocator);
     // try layer_example(allocator);
-    try mlp_example(allocator);
+    // try mlp_example(allocator);
+    try example_dataset(allocator);
+}
+
+fn example_dataset(allocator: std.mem.Allocator) !void {
+    const nouts = [3]usize{ 4, 4, 1 };
+
+    const xs = [4][3]f64{ .{ 2, 3, -1 }, .{ 3, -1, 0.5 }, .{ 0.5, 1, 1 }, .{ 1, 1, -1 } };
+    const ys = [4]f64{ 1, -1, -1, 1 };
+    _ = ys;
+
+    var mlp = try MLP.init(allocator, 3, &nouts);
+    defer mlp.deinit();
+
+    for (xs) |x| {
+        var pred = try mlp.call(&x);
+        defer pred.deinit();
+
+        switch (pred) {
+            .single => |value| {
+                try value.print();
+            },
+            .multiple => unreachable,
+        }
+    }
 }
 
 fn mlp_example(allocator: std.mem.Allocator) !void {
@@ -72,11 +96,7 @@ fn neuron_example(allocator: std.mem.Allocator) !void {
 
     const res = try n.call(&x);
     defer res.release();
-
-    const res_string = try res.string();
-    defer allocator.free(res_string);
-
-    std.debug.print("{s}\n", .{res_string});
+    try res.print();
 }
 
 fn grad_example(allocator: std.mem.Allocator) !void {

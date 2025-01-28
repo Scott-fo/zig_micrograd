@@ -1,7 +1,7 @@
 const std = @import("std");
 const Neuron = @import("Neuron.zig");
 const Value = @import("value.zig").Value;
-const LayerOutput = @import("LayerOutput.zig");
+const LayerResult = @import("layer_result.zig").LayerResult;
 
 const Self = @This();
 
@@ -44,7 +44,7 @@ pub fn deinit(self: *Self) void {
     self.neurons.deinit();
 }
 
-pub fn call(self: *Self, x: []*Value(f64)) !LayerOutput {
+pub fn call(self: *Self, x: []*Value(f64)) !LayerResult {
     var values = std.ArrayList(*Value(f64)).init(self.allocator);
     errdefer values.deinit();
 
@@ -55,5 +55,13 @@ pub fn call(self: *Self, x: []*Value(f64)) !LayerOutput {
         try values.append(out);
     }
 
-    return .{ .values = values };
+    if (values.items.len == 1) {
+        const single = values.items[0];
+        values.clearRetainingCapacity();
+        values.deinit();
+
+        return .{ .single = single };
+    }
+
+    return .{ .multiple = values };
 }
