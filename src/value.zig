@@ -19,7 +19,7 @@ pub fn Value(comptime T: type) type {
         op: ?[]const u8,
         label: ?[]const u8,
 
-        fn reference(self: *Self) void {
+        pub fn reference(self: *Self) void {
             self.refs += 1;
         }
 

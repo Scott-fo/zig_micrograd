@@ -3,6 +3,7 @@ const ops = @import("ops.zig");
 const Value = @import("value.zig").Value;
 const Neuron = @import("Neuron.zig");
 const Layer = @import("Layer.zig");
+const MLP = @import("MLP.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -10,55 +11,51 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
-    var prng = std.Random.DefaultPrng.init(@intCast(
-        std.time.milliTimestamp(),
-    ));
-
-    const random = prng.random();
-
     try grad_example(allocator);
-    try neuron_example(allocator, random);
-    try layer_example(allocator, random);
+    try neuron_example(allocator);
+    try layer_example(allocator);
+    try mlp_example(allocator);
 }
 
-fn layer_example(allocator: std.mem.Allocator, random: std.Random) !void {
+fn mlp_example(allocator: std.mem.Allocator) !void {
+    var nouts = [_]usize{ 4, 4, 1 };
+    var mlp = try MLP.init(allocator, 3, &nouts);
+    defer mlp.deinit();
+
+    var x = [3]f64{ 2, 3, -1 };
+
+    var out = try mlp.call(&x);
+    defer out.deinit();
+
+    try out.print(allocator);
+}
+
+fn layer_example(allocator: std.mem.Allocator) !void {
     var x1 = try Value(f64).new(allocator, 2, "x1");
     defer x1.release();
 
     var x2 = try Value(f64).new(allocator, 3, "x2");
     defer x2.release();
 
-    var l = try Layer.init(allocator, 2, 3, random);
+    var l = try Layer.init(allocator, 2, 3);
     defer l.deinit();
 
     var x = [2]*Value(f64){ x1, x2 };
 
-    const res = try l.call(&x);
-    defer {
-        for (res.items) |out| {
-            out.release();
-        }
-        res.deinit();
-    }
+    var res = try l.call(&x);
+    defer res.deinit();
 
-    std.debug.print("Layer=[\n", .{});
-    for (res.items) |out| {
-        const res_string = try out.string();
-        defer allocator.free(res_string);
-
-        std.debug.print("  {s},\n", .{res_string});
-    }
-    std.debug.print("]\n", .{});
+    try res.print(allocator);
 }
 
-fn neuron_example(allocator: std.mem.Allocator, random: std.Random) !void {
+fn neuron_example(allocator: std.mem.Allocator) !void {
     var x1 = try Value(f64).new(allocator, 2, "x1");
     defer x1.release();
 
     var x2 = try Value(f64).new(allocator, 3, "x2");
     defer x2.release();
 
-    var n = try Neuron.init(allocator, 2, random);
+    var n = try Neuron.init(allocator, 2);
     defer n.deinit();
 
     var x = [2]*Value(f64){ x1, x2 };

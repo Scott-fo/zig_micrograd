@@ -1,6 +1,7 @@
 const std = @import("std");
 const Neuron = @import("Neuron.zig");
 const Value = @import("value.zig").Value;
+const LayerOutput = @import("LayerOutput.zig");
 
 const Self = @This();
 
@@ -11,15 +12,20 @@ pub fn init(
     allocator: std.mem.Allocator,
     nin: usize,
     nout: usize,
-    rand: std.Random,
 ) !Self {
     var list = std.ArrayList(*Neuron).init(allocator);
     try list.ensureTotalCapacity(nout);
 
+    var prng = std.Random.DefaultPrng.init(@intCast(
+        std.time.milliTimestamp(),
+    ));
+
+    const random = prng.random();
+
     var i = nout;
     while (i > 0) : (i -= 1) {
         const n = try allocator.create(Neuron);
-        n.* = try Neuron.init(allocator, nin, rand);
+        n.* = try Neuron.init_with_rand(allocator, nin, random);
         try list.append(n);
     }
 
@@ -38,13 +44,16 @@ pub fn deinit(self: *Self) void {
     self.neurons.deinit();
 }
 
-pub fn call(self: *Self, x: []*Value(f64)) !std.ArrayList(*Value(f64)) {
-    var res = std.ArrayList(*Value(f64)).init(self.allocator);
+pub fn call(self: *Self, x: []*Value(f64)) !LayerOutput {
+    var values = std.ArrayList(*Value(f64)).init(self.allocator);
+    errdefer values.deinit();
 
     for (self.neurons.items) |neuron| {
         const out = try neuron.call(x);
-        try res.append(out);
+        errdefer out.release();
+
+        try values.append(out);
     }
 
-    return res;
+    return .{ .values = values };
 }
