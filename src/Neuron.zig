@@ -94,3 +94,17 @@ pub fn call(self: Self, x: []*Value(f64)) !*Value(f64) {
 
     return ops.tanh(f64, with_bias, self.allocator);
 }
+
+pub fn parameters(self: *Self) !std.ArrayList(*Value(f64)) {
+    var params = std.ArrayList(*Value(f64)).init(self.allocator);
+    errdefer params.deinit();
+
+    try params.appendSlice(self.w.items);
+    try params.append(self.b);
+
+    for (params.items) |param| {
+        param.retain();
+    }
+
+    return params;
+}

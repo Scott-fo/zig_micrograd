@@ -65,3 +65,17 @@ pub fn call(self: *Self, x: []*Value(f64)) !LayerResult {
 
     return .{ .multiple = values };
 }
+
+pub fn parameters(self: *Self) !std.ArrayList(*Value(f64)) {
+    var params = std.ArrayList(*Value(f64)).init(self.allocator);
+    errdefer params.deinit();
+
+    for (self.neurons.items) |neuron| {
+        var neuron_params = try neuron.parameters();
+        defer neuron_params.deinit();
+
+        try params.appendSlice(neuron_params.items);
+    }
+
+    return params;
+}

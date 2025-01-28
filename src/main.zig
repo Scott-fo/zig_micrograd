@@ -15,29 +15,77 @@ pub fn main() !void {
     // try neuron_example(allocator);
     // try layer_example(allocator);
     // try mlp_example(allocator);
-    try example_dataset(allocator);
+    try training_example(allocator);
 }
 
-fn example_dataset(allocator: std.mem.Allocator) !void {
+fn training_example(allocator: std.mem.Allocator) !void {
     const nouts = [3]usize{ 4, 4, 1 };
 
     const xs = [4][3]f64{ .{ 2, 3, -1 }, .{ 3, -1, 0.5 }, .{ 0.5, 1, 1 }, .{ 1, 1, -1 } };
     const ys = [4]f64{ 1, -1, -1, 1 };
-    _ = ys;
 
     var mlp = try MLP.init(allocator, 3, &nouts);
     defer mlp.deinit();
 
-    for (xs) |x| {
-        var pred = try mlp.call(&x);
-        defer pred.deinit();
+    var epoch: usize = 0;
+    while (epoch < 20) : (epoch += 1) {
+        var loss = try Value(f64).new(allocator, 0, "loss");
+        defer loss.release();
 
-        switch (pred) {
-            .single => |value| {
-                try value.print();
-            },
-            .multiple => unreachable,
+        // Zero gradients
+        const params = try mlp.parameters();
+        defer {
+            for (params.items) |param| {
+                param.release();
+            }
+            params.deinit();
         }
+
+        for (params.items) |param| {
+            param.grad = 0;
+        }
+
+        for (xs, ys) |x, y| {
+            // Forward pass
+            var pred = try mlp.call(&x);
+            defer pred.deinit();
+
+            var target = try Value(f64).new(allocator, y, null);
+            defer target.release();
+
+            switch (pred) {
+                .single => |value| {
+                    const diff = try ops.sub(f64, value, target, allocator);
+                    defer diff.release();
+
+                    const two = try Value(f64).new(allocator, 2, "2");
+                    defer two.release();
+
+                    const squared_error = try ops.pow(f64, diff, two, allocator);
+                    defer squared_error.release();
+
+                    const new_loss = try ops.add(f64, loss, squared_error, allocator);
+
+                    loss.release();
+                    loss = new_loss;
+                },
+                .multiple => unreachable,
+            }
+        }
+
+        const n = try Value(f64).new(allocator, @as(f64, @floatFromInt(xs.len)), "n");
+        defer n.release();
+
+        const mean_loss = try ops.div(f64, loss, n, allocator);
+        defer mean_loss.release();
+
+        try mean_loss.backward();
+
+        for (params.items) |param| {
+            param.data -= 0.05 * param.grad;
+        }
+
+        std.debug.print("Epoch {}: Loss = {d:.4}\n", .{ epoch, mean_loss.data });
     }
 }
 

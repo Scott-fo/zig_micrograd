@@ -112,3 +112,17 @@ pub fn call(self: *Self, x: []const f64) !LayerResult {
 
     unreachable;
 }
+
+pub fn parameters(self: *Self) !std.ArrayList(*Value(f64)) {
+    var params = std.ArrayList(*Value(f64)).init(self.allocator);
+    errdefer params.deinit();
+
+    for (self.layers.items) |layer| {
+        var layer_params = try layer.parameters();
+        defer layer_params.deinit();
+
+        try params.appendSlice(layer_params.items);
+    }
+
+    return params;
+}
