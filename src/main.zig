@@ -32,7 +32,6 @@ fn training_example(allocator: std.mem.Allocator) !void {
         var loss = try Value(f64).new(allocator, 0, "loss");
         defer loss.release();
 
-        // Zero gradients
         const params = try mlp.parameters();
         defer {
             for (params.items) |param| {
