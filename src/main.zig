@@ -11,24 +11,33 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
-    try grad_example(allocator);
-    try neuron_example(allocator);
-    try layer_example(allocator);
+    // try grad_example(allocator);
+    // try neuron_example(allocator);
+    // try layer_example(allocator);
     try mlp_example(allocator);
 }
 
 fn mlp_example(allocator: std.mem.Allocator) !void {
-    const nouts = [_]usize{ 4, 4, 1 };
+    const nouts = [3]usize{ 4, 4, 1 };
+    const x = [3]f64{ 2, 3, -1 };
 
-    var mlp = try MLP.init(allocator, 3, &nouts);
+    var mlp = try MLP.init(allocator, x.len, &nouts);
     defer mlp.deinit();
-
-    var x = [3]f64{ 2, 3, -1 };
 
     var out = try mlp.call(&x);
     defer out.deinit();
 
     try out.print(allocator);
+
+    if (out.values.items.len == 1) {
+        var o = out.values.items[0];
+        try o.backward();
+
+        const asci = try o.toAscii();
+        defer allocator.free(asci);
+
+        std.debug.print("{s}\n", .{asci});
+    }
 }
 
 fn layer_example(allocator: std.mem.Allocator) !void {

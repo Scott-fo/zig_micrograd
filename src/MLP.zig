@@ -5,12 +5,17 @@ const LayerOutput = @import("LayerOutput.zig");
 
 const Self = @This();
 
+const MLPError = error{
+    InvalidInputSize,
+};
+
 allocator: std.mem.Allocator,
 layers: std.ArrayList(*Layer),
+nin: usize,
 
 pub fn init(allocator: std.mem.Allocator, comptime nin: usize, comptime nouts: []const usize) !Self {
     comptime {
-        if (nouts.len != nin) @compileError("nouts must have length nin");
+        if (nouts.len == 0) @compileError("Network must have at least one layer");
     }
 
     var layers = std.ArrayList(*Layer).init(allocator);
@@ -36,6 +41,7 @@ pub fn init(allocator: std.mem.Allocator, comptime nin: usize, comptime nouts: [
     return .{
         .allocator = allocator,
         .layers = layers,
+        .nin = nin,
     };
 }
 
@@ -48,7 +54,12 @@ pub fn deinit(self: *Self) void {
     self.layers.deinit();
 }
 
-pub fn call(self: *Self, x: []f64) !LayerOutput {
+pub fn call(self: *Self, comptime x: []const f64) !LayerOutput {
+    if (x.len != self.nin) {
+        std.debug.print("Input size mismatch: expected {}, got {}\n", .{ self.nin, x.len });
+        return MLPError.InvalidInputSize;
+    }
+
     var current = std.ArrayList(*Value(f64)).init(self.allocator);
     defer current.deinit();
 
@@ -57,10 +68,7 @@ pub fn call(self: *Self, x: []f64) !LayerOutput {
 
     try current.ensureTotalCapacity(x.len);
     for (x) |value| {
-        var val = try Value(f64).new(self.allocator, value, null);
-        defer val.release();
-
-        val.reference();
+        const val = try Value(f64).new(self.allocator, value, null);
         try current.append(val);
     }
 

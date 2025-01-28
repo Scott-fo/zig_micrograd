@@ -19,7 +19,7 @@ pub fn Value(comptime T: type) type {
         op: ?[]const u8,
         label: ?[]const u8,
 
-        pub fn reference(self: *Self) void {
+        fn retain(self: *Self) void {
             self.refs += 1;
         }
 
@@ -68,7 +68,7 @@ pub fn Value(comptime T: type) type {
             if (prev) |p| {
                 try list.appendSlice(p);
                 for (p) |child| {
-                    child.reference();
+                    child.retain();
                 }
             }
 
@@ -134,7 +134,7 @@ pub fn Value(comptime T: type) type {
                 const is_last_child = i == self.prev.items.len - 1;
                 const new_prefix = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{
                     prefix,
-                    if (is_last) "       " else "│      ",
+                    if (is_last) "     " else "│    ",
                 });
                 defer self.allocator.free(new_prefix);
                 try p.buildAscii(list, new_prefix, is_last_child);
